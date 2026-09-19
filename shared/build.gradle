@@ -1,0 +1,5 @@
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'jakarta.validation:jakarta.validation-api'
+    implementation platform('org.springframework.boot:spring-boot-dependencies:3.3.2')
+}

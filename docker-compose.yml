@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: videoservice_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mailhog:
+    image: mailhog/mailhog
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # веб-интерфейс, там видно письма
+      - "1025:1025"   # SMTP
+
+  auth:
+    build:
+      context: .
+      dockerfile: module/auth/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: videoservice_auth
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+    depends_on:
+      - postgres
+      - mailhog
+
+volumes:
+  pgdata:
