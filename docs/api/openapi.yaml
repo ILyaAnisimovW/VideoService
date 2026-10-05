@@ -1,0 +1,1848 @@
+openapi: 3.1.1
+info:
+  title: Video Service API
+  version: 0.1.0-design
+  description: Proposed video-on-demand MVP. Not a claim of implemented endpoints. See docs/api/http.md for behavioral
+    invariants.
+servers:
+- url: http://localhost:8080/api/v1
+  description: Local development, backend not included
+- url: https://api.example.com/api/v1
+  description: Placeholder only
+tags:
+- name: Identity
+- name: Videos
+- name: Uploads
+- name: Processing
+- name: Playback
+- name: Moderation
+- name: Internal
+security:
+- bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      operationId: register
+      tags:
+      - Identity
+      summary: Создать USER и выдать JWT
+      responses:
+        '201':
+          description: Создать USER и выдать JWT
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      security: []
+      description: Canonical email is trim+lower. Client cannot choose role. No verification/refresh in MVP.
+  /auth/login:
+    post:
+      operationId: login
+      tags:
+      - Identity
+      summary: Войти и выдать JWT
+      responses:
+        '200':
+          description: Войти и выдать JWT
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      security: []
+  /users/me:
+    get:
+      operationId: getMe
+      tags:
+      - Identity
+      summary: Получить текущего пользователя
+      responses:
+        '200':
+          description: Получить текущего пользователя
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /users/me/videos:
+    get:
+      operationId: listMyVideos
+      tags:
+      - Videos
+      summary: Получить свои видео всех состояний
+      responses:
+        '200':
+          description: Получить свои видео всех состояний
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+  /videos:
+    post:
+      operationId: createVideo
+      tags:
+      - Videos
+      summary: Создать метаданные видео
+      responses:
+        '201':
+          description: Создать метаданные видео
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            ETag:
+              description: Quoted rowVersion.
+              schema:
+                type: string
+              example: '"7"'
+            Location:
+              description: Resource/status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoRequest'
+    get:
+      operationId: listVideos
+      tags:
+      - Videos
+      summary: Получить публичный готовый каталог
+      responses:
+        '200':
+          description: Получить публичный готовый каталог
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      security:
+      - {}
+      - bearerAuth: []
+      description: Only PUBLIC + READY + CLEAR + ACTIVE. Ordered by createdAt DESC, id DESC.
+  /videos/{videoId}:
+    get:
+      operationId: getVideo
+      tags:
+      - Videos
+      summary: Получить доступные метаданные
+      responses:
+        '200':
+          description: Получить доступные метаданные
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            ETag:
+              description: Quoted rowVersion.
+              schema:
+                type: string
+              example: '"7"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      security:
+      - {}
+      - bearerAuth: []
+      description: Owner/moderator can inspect processing state; others only visible PUBLIC/UNLISTED READY content.
+    patch:
+      operationId: patchVideo
+      tags:
+      - Videos
+      summary: Изменить свои метаданные
+      responses:
+        '200':
+          description: Изменить свои метаданные
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            ETag:
+              description: Quoted rowVersion.
+              schema:
+                type: string
+              example: '"7"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '412':
+          $ref: '#/components/responses/Error412'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '428':
+          $ref: '#/components/responses/Error428'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchVideoRequest'
+      description: Description null clears it; absent fields stay unchanged. State/owner/moderation fields cannot
+        be changed.
+    delete:
+      operationId: deleteVideo
+      tags:
+      - Videos
+      summary: Запросить удаление своего видео
+      responses:
+        '202':
+          description: Запросить удаление своего видео
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Location:
+              description: Resource/status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionTask'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '204':
+          description: Already deleted. No response body.
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      description: Repeated pending deletion returns the same task. Already DELETED returns 204.
+  /videos/{videoId}/moderation:
+    put:
+      operationId: moderateVideo
+      tags:
+      - Moderation
+      summary: Изменить решение модерации
+      responses:
+        '200':
+          description: Изменить решение модерации
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            ETag:
+              description: Quoted rowVersion.
+              schema:
+                type: string
+              example: '"7"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '412':
+          $ref: '#/components/responses/Error412'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '428':
+          $ref: '#/components/responses/Error428'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationRequest'
+      description: MODERATOR/ADMIN only. Mandatory reason for CLEAR and BLOCKED. User reports are outside MVP.
+  /videos/{videoId}/deletion:
+    get:
+      operationId: getDeletion
+      tags:
+      - Videos
+      summary: Получить задачу удаления своего видео
+      responses:
+        '200':
+          description: Получить задачу удаления своего видео
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionTask'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      description: 404 if not owner or deletion was not requested; owner can inspect DELETED tombstone task.
+  /videos/{videoId}/upload-sessions:
+    post:
+      operationId: createUploadSession
+      tags:
+      - Uploads
+      summary: Создать multipart-сессию
+      responses:
+        '201':
+          description: Создать multipart-сессию
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Location:
+              description: Resource/status URL.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadSession'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadRequest'
+      description: Only own ACTIVE WAITING_UPLOAD video. At most one live upload session; state INITIATING recovers
+        external creation failures.
+  /upload-sessions/{sessionId}:
+    get:
+      operationId: getUploadSession
+      tags:
+      - Uploads
+      summary: Получить состояние загрузки и части
+      responses:
+        '200':
+          description: Получить состояние загрузки и части
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadSession'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+    delete:
+      operationId: abortUpload
+      tags:
+      - Uploads
+      summary: Отменить незавершённую загрузку
+      responses:
+        '204':
+          description: Отменить незавершённую загрузку
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      description: Idempotent for ABORTED/EXPIRED; COMPLETED cannot be aborted, delete the video instead. Marks
+        video DELETING and schedules durable cleanup.
+  /upload-sessions/{sessionId}/parts/{partNumber}/url:
+    post:
+      operationId: signUploadPart
+      tags:
+      - Uploads
+      summary: Получить PUT URL части
+      responses:
+        '200':
+          description: Получить PUT URL части
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartUploadUrl'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/PartNumber'
+      description: Only OPEN session. URL TTL <= 10 minutes and session expiry. exact expectedSizeBytes for this
+        part; client stores returned S3 ETag.
+  /upload-sessions/{sessionId}/complete:
+    post:
+      operationId: completeUpload
+      tags:
+      - Uploads
+      summary: Завершить загрузку и создать job
+      responses:
+        '202':
+          description: Завершить загрузку и создать job
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Location:
+              description: Resource/status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJob'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteUploadRequest'
+      description: Ordered distinct part numbers 1..partCount, exact ETags. Persist COMPLETING parts before S3 call.
+        202 only after verified source and SQL job/outbox commit. Repeated completion returns same job.
+  /processing-jobs/{jobId}:
+    get:
+      operationId: getProcessingJob
+      tags:
+      - Processing
+      summary: Получить своё задание обработки
+      responses:
+        '200':
+          description: Получить своё задание обработки
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJob'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/JobId'
+  /videos/{videoId}/processing-retries:
+    post:
+      operationId: retryProcessing
+      tags:
+      - Processing
+      summary: Повторить FAILED-видео новой версией
+      responses:
+        '202':
+          description: Повторить FAILED-видео новой версией
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Location:
+              description: Resource/status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJob'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      description: Only own ACTIVE FAILED video with valid source. New job, processingVersion + 1; automatic attempt
+        retries keep the old version.
+  /videos/{videoId}/playback-sessions:
+    post:
+      operationId: createPlaybackSession
+      tags:
+      - Playback
+      summary: Создать разрешение на просмотр
+      responses:
+        '201':
+          description: Создать разрешение на просмотр
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackSession'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/VideoId'
+      security:
+      - {}
+      - bearerAuth: []
+      description: READY + CLEAR + ACTIVE. PRIVATE only owner. Random token stored hashed, expires in 15 minutes.
+        PUBLIC/UNLISTED may be anonymous.
+  /playback-sessions/{sessionId}/manifests/{assetId}:
+    get:
+      operationId: getPlaybackManifest
+      tags:
+      - Playback
+      summary: Получить переписанный HLS-плейлист
+      responses:
+        '200':
+          description: Получить переписанный HLS-плейлист
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                const: no-referrer
+          content:
+            application/vnd.apple.mpegurl:
+              schema:
+                type: string
+              example: |
+                #EXTM3U
+                #EXT-X-VERSION:3
+                #EXT-X-TARGETDURATION:6
+                #EXT-X-MEDIA-SEQUENCE:0
+                #EXTINF:6.0,
+                https://media.example.com/demo/segment-000.ts?signature=example
+                #EXT-X-ENDLIST
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '410':
+          $ref: '#/components/responses/Error410'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/AssetId'
+      security:
+      - playbackToken: []
+      description: Only accepted manifest asset of this session/video/version. Recheck current permissions. Master
+        URIs point to this API; media URIs receive short signed URLs. No arbitrary external URI fetch.
+  /internal/processing-jobs/{jobId}/claims:
+    post:
+      operationId: claimProcessingJob
+      tags:
+      - Internal
+      summary: Получить lease для worker
+      responses:
+        '201':
+          description: Получить lease для worker
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingLease'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/JobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      security:
+      - workerAuth: []
+      description: Worker ID from machine token. Serial transaction; current ACTIVE version, free job, attempt budget.
+        JOB_BUSY retry; STALE_JOB/JOB_TERMINAL/JOB_CANCELLED acknowledge old command without processing. Returns
+        server-owned source/output paths.
+  /internal/processing-jobs/{jobId}/lease:
+    put:
+      operationId: heartbeatProcessingJob
+      tags:
+      - Internal
+      summary: Продлить lease либо подтвердить terminal result
+      responses:
+        '200':
+          description: Продлить lease либо подтвердить terminal result
+          headers:
+            X-Trace-Id:
+              description: Correlation identifier.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseState'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '503':
+          $ref: '#/components/responses/Error503'
+      parameters:
+      - $ref: '#/components/parameters/JobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequest'
+      security:
+      - workerAuth: []
+      description: Match worker identity, leaseId and attemptNo. RUNNING extends to min(now+60sec, absoluteDeadline).
+        Same accepted attempt may receive SUCCEEDED/FAILED and null expiresAt. Stale/cancelled/expired returns 409;
+        stop work.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    workerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Machine JWT, audience video-worker; not a user token.
+    playbackToken:
+      type: apiKey
+      in: query
+      name: token
+      description: Random playback capability; log redaction required.
+  parameters:
+    VideoId:
+      name: videoId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AssetId:
+      name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PartNumber:
+      name: partNumber
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 128
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: ^[A-Za-z0-9._:-]+$
+      description: '24-hour scope: user + operation + target + key. Same request replays original response; changed
+        body is 409.'
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^"[0-9]+"$
+      example: '"7"'
+  responses:
+    Error400:
+      description: Malformed request or invalid cursor.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error401:
+      description: Missing or invalid credentials/token.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error403:
+      description: Role or worker audience is not allowed.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error404:
+      description: Resource absent or hidden by permissions.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error409:
+      description: State, idempotency or job conflict.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+        Retry-After:
+          description: Delay in seconds when retry is applicable.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error410:
+      description: Expired session or deleted owner resource.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error412:
+      description: If-Match does not match current row version.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error422:
+      description: Validation failure or source/parts mismatch.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error428:
+      description: If-Match is required.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error429:
+      description: Rate limited.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+        Retry-After:
+          description: Delay in seconds when retry is applicable.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Error503:
+      description: Temporary dependency failure; retry the same recoverable operation.
+      headers:
+        X-Trace-Id:
+          description: Correlation identifier.
+          schema:
+            type: string
+        Retry-After:
+          description: Delay in seconds when retry is applicable.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Visibility:
+      type: string
+      enum:
+      - PUBLIC
+      - UNLISTED
+      - PRIVATE
+    ProcessingStatus:
+      type: string
+      enum:
+      - WAITING_UPLOAD
+      - QUEUED
+      - PROCESSING
+      - READY
+      - FAILED
+    ModerationStatus:
+      type: string
+      enum:
+      - CLEAR
+      - BLOCKED
+    LifecycleStatus:
+      type: string
+      enum:
+      - ACTIVE
+      - DELETING
+      - DELETED
+    Role:
+      type: string
+      enum:
+      - USER
+      - MODERATOR
+      - ADMIN
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+      required:
+      - field
+      - message
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      required:
+      - code
+      - message
+      - traceId
+      - timestamp
+      - path
+      - details
+      example:
+        code: VIDEO_NOT_READY
+        message: Видео ещё обрабатывается
+        traceId: 0a9f64e4
+        timestamp: '2026-10-05T16:00:00Z'
+        path: /api/v1/videos/11111111-1111-4111-8111-111111111111/playback-sessions
+        details: []
+    User:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        role:
+          $ref: '#/components/schemas/Role'
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - email
+      - displayName
+      - role
+      - createdAt
+      example:
+        id: 22222222-2222-4222-8222-222222222222
+        email: author@example.com
+        displayName: Автор
+        role: USER
+        createdAt: '2026-10-05T16:00:00Z'
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required:
+      - email
+      - password
+      - displayName
+      example:
+        email: author@example.com
+        password: example-only-password-123
+        displayName: Автор
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+      required:
+      - email
+      - password
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum:
+          - Bearer
+        expiresIn:
+          type: integer
+          const: 3600
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - accessToken
+      - tokenType
+      - expiresIn
+      - user
+    CreateVideoRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 5000
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+      required:
+      - title
+      - visibility
+      example:
+        title: Как работает Spring Boot
+        description: Первый ролик
+        visibility: PRIVATE
+    PatchVideoRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 5000
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+      minProperties: 1
+    Video:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        processingStatus:
+          $ref: '#/components/schemas/ProcessingStatus'
+        moderationStatus:
+          $ref: '#/components/schemas/ModerationStatus'
+        lifecycleStatus:
+          $ref: '#/components/schemas/LifecycleStatus'
+        processingVersion:
+          type: integer
+          minimum: 1
+        rowVersion:
+          type: integer
+          minimum: 0
+        durationMs:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - ownerId
+      - title
+      - description
+      - visibility
+      - processingStatus
+      - moderationStatus
+      - lifecycleStatus
+      - processingVersion
+      - rowVersion
+      - durationMs
+      - createdAt
+      - updatedAt
+      example:
+        id: 11111111-1111-4111-8111-111111111111
+        ownerId: 22222222-2222-4222-8222-222222222222
+        title: Как работает Spring Boot
+        description: Первый ролик
+        visibility: PRIVATE
+        processingStatus: WAITING_UPLOAD
+        moderationStatus: CLEAR
+        lifecycleStatus: ACTIVE
+        processingVersion: 1
+        rowVersion: 0
+        durationMs: null
+        createdAt: '2026-10-05T16:00:00Z'
+        updatedAt: '2026-10-05T16:00:00Z'
+    VideoPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Video'
+        nextCursor:
+          type:
+          - string
+          - 'null'
+      required:
+      - items
+      - nextCursor
+    ModerationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: '#/components/schemas/ModerationStatus'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+      - status
+      - reason
+    CreateUploadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 2147483648
+        contentType:
+          type: string
+          enum:
+          - video/mp4
+          - video/quicktime
+          - video/webm
+      required:
+      - sizeBytes
+      - contentType
+      example:
+        sizeBytes: 33554432
+        contentType: video/mp4
+    UploadedPart:
+      type: object
+      additionalProperties: false
+      properties:
+        partNumber:
+          type: integer
+          minimum: 1
+          maximum: 128
+        etag:
+          type: string
+          minLength: 1
+          maxLength: 256
+        sizeBytes:
+          type: integer
+          minimum: 1
+      required:
+      - partNumber
+      - etag
+      - sizeBytes
+    CompletePart:
+      type: object
+      additionalProperties: false
+      properties:
+        partNumber:
+          type: integer
+          minimum: 1
+          maximum: 128
+        etag:
+          type: string
+          minLength: 1
+          maxLength: 256
+      required:
+      - partNumber
+      - etag
+    CompleteUploadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompletePart'
+          minItems: 1
+          maxItems: 128
+      required:
+      - parts
+      example:
+        parts:
+        - partNumber: 1
+          etag: '"demo-etag-1"'
+        - partNumber: 2
+          etag: '"demo-etag-2"'
+    UploadSession:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        videoId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - INITIATING
+          - OPEN
+          - COMPLETING
+          - COMPLETED
+          - ABORTED
+          - EXPIRED
+        sizeBytes:
+          type: integer
+          minimum: 1
+        partSizeBytes:
+          type: integer
+          const: 16777216
+        partCount:
+          type: integer
+          minimum: 1
+          maximum: 128
+        expiresAt:
+          type: string
+          format: date-time
+        uploadedParts:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadedPart'
+        processingJobId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      required:
+      - id
+      - videoId
+      - state
+      - sizeBytes
+      - partSizeBytes
+      - partCount
+      - expiresAt
+      - uploadedParts
+      - processingJobId
+      example:
+        id: 33333333-3333-4333-8333-333333333333
+        videoId: 11111111-1111-4111-8111-111111111111
+        state: OPEN
+        sizeBytes: 33554432
+        partSizeBytes: 16777216
+        partCount: 2
+        expiresAt: '2026-10-06T16:00:00Z'
+        uploadedParts: []
+        processingJobId: null
+    PartUploadUrl:
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum:
+          - PUT
+        requiredHeaders:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+        expectedSizeBytes:
+          type: integer
+          minimum: 1
+      required:
+      - url
+      - method
+      - requiredHeaders
+      - expiresAt
+      - expectedSizeBytes
+      example:
+        url: https://media.example.com/demo-part?signature=example
+        method: PUT
+        requiredHeaders: {}
+        expiresAt: '2026-10-05T16:10:00Z'
+        expectedSizeBytes: 16777216
+    ProcessingJob:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        videoId:
+          type: string
+          format: uuid
+        processingVersion:
+          type: integer
+          minimum: 1
+        state:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+          - CANCELLED
+        attemptNo:
+          type: integer
+          minimum: 0
+          maximum: 3
+        maxAttempts:
+          type: integer
+          const: 3
+        lastErrorCode:
+          type:
+          - string
+          - 'null'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - videoId
+      - processingVersion
+      - state
+      - attemptNo
+      - maxAttempts
+      - lastErrorCode
+      - createdAt
+      - updatedAt
+      example:
+        id: 44444444-4444-4444-8444-444444444444
+        videoId: 11111111-1111-4111-8111-111111111111
+        processingVersion: 1
+        state: QUEUED
+        attemptNo: 0
+        maxAttempts: 3
+        lastErrorCode: null
+        createdAt: '2026-10-05T16:00:00Z'
+        updatedAt: '2026-10-05T16:00:00Z'
+    DeletionTask:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        videoId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - DONE
+          - FAILED
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - videoId
+      - state
+      - updatedAt
+    PlaybackSession:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        videoId:
+          type: string
+          format: uuid
+        manifestUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - videoId
+      - manifestUrl
+      - expiresAt
+      example:
+        id: 33333333-3333-4333-8333-333333333333
+        videoId: 11111111-1111-4111-8111-111111111111
+        manifestUrl: https://api.example.com/api/v1/playback-sessions/33333333-3333-4333-8333-333333333333/manifests/55555555-5555-4555-8555-555555555555?token=example-only
+        expiresAt: '2026-10-05T16:15:00Z'
+    ClaimRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        processingVersion:
+          type: integer
+          minimum: 1
+      required:
+      - processingVersion
+    ProcessingLease:
+      type: object
+      additionalProperties: false
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        videoId:
+          type: string
+          format: uuid
+        processingVersion:
+          type: integer
+          minimum: 1
+        attemptNo:
+          type: integer
+          minimum: 1
+          maximum: 3
+        leaseId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+        absoluteDeadline:
+          type: string
+          format: date-time
+        sourceKey:
+          type: string
+        outputPrefix:
+          type: string
+        maxDurationSeconds:
+          type: integer
+          const: 1800
+        storageAccess:
+          $ref: '#/components/schemas/StorageAccess'
+      required:
+      - jobId
+      - videoId
+      - processingVersion
+      - attemptNo
+      - leaseId
+      - expiresAt
+      - absoluteDeadline
+      - sourceKey
+      - outputPrefix
+      - maxDurationSeconds
+      - storageAccess
+      example:
+        jobId: 44444444-4444-4444-8444-444444444444
+        videoId: 11111111-1111-4111-8111-111111111111
+        processingVersion: 1
+        attemptNo: 1
+        leaseId: 66666666-6666-4666-8666-666666666666
+        expiresAt: '2026-10-05T16:01:00Z'
+        absoluteDeadline: '2026-10-05T16:20:00Z'
+        sourceKey: videos/11111111-1111-4111-8111-111111111111/source/33333333-3333-4333-8333-333333333333
+        outputPrefix: videos/11111111-1111-4111-8111-111111111111/processed/v1/44444444-4444-4444-8444-444444444444/attempt-1/
+        maxDurationSeconds: 1800
+        storageAccess:
+          endpoint: https://media.example.com
+          bucket: video-media
+          region: example-region
+          accessKeyId: EXAMPLE_TEMPORARY_KEY
+          secretAccessKey: example-only-not-a-real-secret
+          sessionToken: example-only-session-token
+          expiresAt: '2026-10-05T16:20:00Z'
+    HeartbeatRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        leaseId:
+          type: string
+          format: uuid
+        attemptNo:
+          type: integer
+          minimum: 1
+          maximum: 3
+      required:
+      - leaseId
+      - attemptNo
+    LeaseState:
+      type: object
+      additionalProperties: false
+      properties:
+        jobState:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - jobState
+      - expiresAt
+      description: RUNNING renews the live lease. Terminal state with null expiresAt confirms accepted result to
+        the same worker attempt.
+    StorageAccess:
+      type: object
+      additionalProperties: false
+      description: Internal, short-lived scoped S3 credentials. Read only the job source; write only its attempt
+        prefix. TTL <= absolute processing deadline. Provider must support these capabilities. Never log secrets.
+      required:
+      - endpoint
+      - bucket
+      - region
+      - accessKeyId
+      - secretAccessKey
+      - sessionToken
+      - expiresAt
+      properties:
+        endpoint:
+          type: string
+          format: uri
+        bucket:
+          type: string
+        region:
+          type: string
+        accessKeyId:
+          type: string
+          x-sensitive: true
+        secretAccessKey:
+          type: string
+          x-sensitive: true
+        sessionToken:
+          type: string
+          x-sensitive: true
+        expiresAt:
+          type: string
+          format: date-time

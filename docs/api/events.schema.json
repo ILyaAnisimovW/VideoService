@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/video-service/events.schema.json",
+  "title": "Video Service events",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/VideoProcessingRequested"
+    },
+    {
+      "$ref": "#/$defs/VideoProcessingSucceeded"
+    },
+    {
+      "$ref": "#/$defs/VideoProcessingFailed"
+    }
+  ],
+  "$defs": {
+    "VideoProcessingRequested": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "eventType": {
+          "type": "string",
+          "const": "VideoProcessingRequested"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "videoId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "jobId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "processingVersion": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "eventId",
+        "eventType",
+        "schemaVersion",
+        "occurredAt",
+        "traceId",
+        "videoId",
+        "jobId",
+        "processingVersion"
+      ],
+      "examples": [
+        {
+          "eventId": "77777777-7777-4777-8777-777777777777",
+          "schemaVersion": 1,
+          "occurredAt": "2026-10-05T16:00:00Z",
+          "traceId": "0a9f64e4",
+          "videoId": "11111111-1111-4111-8111-111111111111",
+          "jobId": "44444444-4444-4444-8444-444444444444",
+          "processingVersion": 1,
+          "eventType": "VideoProcessingRequested"
+        }
+      ]
+    },
+    "VideoProcessingSucceeded": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "eventType": {
+          "type": "string",
+          "const": "VideoProcessingSucceeded"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "videoId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "jobId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "processingVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attemptNo": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "leaseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1800000
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "MASTER_PLAYLIST",
+                  "MEDIA_PLAYLIST",
+                  "THUMBNAIL"
+                ]
+              },
+              "quality": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "360p",
+                  "720p",
+                  "1080p",
+                  "source",
+                  null
+                ]
+              },
+              "objectKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "renditionPrefix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "segmentCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "sizeBytes": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "kind",
+              "quality",
+              "objectKey",
+              "renditionPrefix",
+              "segmentCount",
+              "sizeBytes"
+            ]
+          },
+          "minItems": 3
+        }
+      },
+      "required": [
+        "eventId",
+        "eventType",
+        "schemaVersion",
+        "occurredAt",
+        "traceId",
+        "videoId",
+        "jobId",
+        "processingVersion",
+        "attemptNo",
+        "leaseId",
+        "durationMs",
+        "assets"
+      ],
+      "examples": [
+        {
+          "eventId": "88888888-8888-4888-8888-888888888888",
+          "schemaVersion": 1,
+          "occurredAt": "2026-10-05T16:00:00Z",
+          "traceId": "0a9f64e4",
+          "videoId": "11111111-1111-4111-8111-111111111111",
+          "jobId": "44444444-4444-4444-8444-444444444444",
+          "processingVersion": 1,
+          "eventType": "VideoProcessingSucceeded",
+          "attemptNo": 1,
+          "leaseId": "66666666-6666-4666-8666-666666666666",
+          "durationMs": 60000,
+          "assets": [
+            {
+              "kind": "MASTER_PLAYLIST",
+              "quality": null,
+              "objectKey": "videos/11111111-1111-4111-8111-111111111111/processed/v1/44444444-4444-4444-8444-444444444444/attempt-1/master.m3u8",
+              "renditionPrefix": null,
+              "segmentCount": null,
+              "sizeBytes": 210
+            },
+            {
+              "kind": "MEDIA_PLAYLIST",
+              "quality": "720p",
+              "objectKey": "videos/11111111-1111-4111-8111-111111111111/processed/v1/44444444-4444-4444-8444-444444444444/attempt-1/720p/index.m3u8",
+              "renditionPrefix": "videos/11111111-1111-4111-8111-111111111111/processed/v1/44444444-4444-4444-8444-444444444444/attempt-1/720p/",
+              "segmentCount": 10,
+              "sizeBytes": 1600
+            },
+            {
+              "kind": "THUMBNAIL",
+              "quality": null,
+              "objectKey": "videos/11111111-1111-4111-8111-111111111111/processed/v1/44444444-4444-4444-8444-444444444444/attempt-1/thumbnail.jpg",
+              "renditionPrefix": null,
+              "segmentCount": null,
+              "sizeBytes": 64000
+            }
+          ]
+        }
+      ]
+    },
+    "VideoProcessingFailed": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "eventType": {
+          "type": "string",
+          "const": "VideoProcessingFailed"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "videoId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "jobId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "processingVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attemptNo": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "leaseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "errorCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "eventId",
+        "eventType",
+        "schemaVersion",
+        "occurredAt",
+        "traceId",
+        "videoId",
+        "jobId",
+        "processingVersion",
+        "attemptNo",
+        "leaseId",
+        "errorCode",
+        "retryable"
+      ],
+      "examples": [
+        {
+          "eventId": "99999999-9999-4999-8999-999999999999",
+          "schemaVersion": 1,
+          "occurredAt": "2026-10-05T16:00:00Z",
+          "traceId": "0a9f64e4",
+          "videoId": "11111111-1111-4111-8111-111111111111",
+          "jobId": "44444444-4444-4444-8444-444444444444",
+          "processingVersion": 1,
+          "eventType": "VideoProcessingFailed",
+          "attemptNo": 1,
+          "leaseId": "66666666-6666-4666-8666-666666666666",
+          "errorCode": "UNSUPPORTED_MEDIA",
+          "retryable": false
+        }
+      ]
+    }
+  }
+}
