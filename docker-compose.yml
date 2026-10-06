@@ -3,39 +3,32 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: videoservice_auth
+      POSTGRES_DB: video_service
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - video_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d video_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-  mailhog:
-    image: mailhog/mailhog
+  api:
+    build: .
     restart: unless-stopped
     ports:
-      - "8025:8025"   # веб-интерфейс, там видно письма
-      - "1025:1025"   # SMTP
-
-  auth:
-    build:
-      context: .
-      dockerfile: module/auth/Dockerfile
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
+      - "8080:8080"
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: videoservice_auth
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      MAIL_HOST: mailhog
-      MAIL_PORT: 1025
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/video_service
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to at least 32 random bytes}
     depends_on:
-      - postgres
-      - mailhog
+      postgres:
+        condition: service_healthy
 
 volumes:
-  pgdata:
+  video_pgdata:

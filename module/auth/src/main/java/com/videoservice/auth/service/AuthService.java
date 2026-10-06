@@ -1,72 +1,77 @@
 package com.videoservice.auth.service;
 
-import com.videoservice.auth.dto.ConfirmRequest;
+import com.videoservice.auth.dto.AuthResponse;
+import com.videoservice.auth.dto.LoginRequest;
 import com.videoservice.auth.dto.RegisterRequest;
+import com.videoservice.auth.dto.UserResponse;
 import com.videoservice.auth.entity.User;
 import com.videoservice.auth.entity.UserStatus;
 import com.videoservice.auth.repository.UserRepository;
-import com.videoservice.auth.util.ConfirmationCodeGenerator;
 import com.videoservice.shared.exception.ApiException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-
-    private static final int CODE_TTL_MINUTES = 15;
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
+    private final JwtTokenService jwtTokenService;
 
     @Transactional
-    public void register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ApiException(HttpStatus.CONFLICT, "Пользователь с таким email уже существует");
+    public AuthResponse register(RegisterRequest request) {
+        String email = canonicalEmail(request.email());
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Пользователь с таким email уже существует");
         }
 
         User user = new User();
-        user.setEmail(request.getEmail());
-        user.setName(request.getName());
-        user.setFamilia(request.getFamilia());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setDateOfBirth(request.getDateOfBirth());
-        user.setStatus(UserStatus.NOT_CONFIRMED);
-
-        String code = ConfirmationCodeGenerator.generate();
-        user.setConfirmationCode(code);
-        user.setConfirmationCodeExpiresAt(LocalDateTime.now().plusMinutes(CODE_TTL_MINUTES));
-
-        userRepository.save(user);
-        emailService.sendConfirmationCode(user.getEmail(), code);
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setDisplayName(request.displayName().trim());
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Пользователь с таким email уже существует");
+        }
+        return new AuthResponse(jwtTokenService.issue(user), UserResponse.from(user));
     }
 
-    @Transactional
-    public void confirm(ConfirmRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
-
-        if (user.getStatus() == UserStatus.ACTIVE) {
-            throw new ApiException(HttpStatus.CONFLICT, "Пользователь уже подтверждён");
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(canonicalEmail(request.email()))
+                .orElseThrow(this::badCredentials);
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw badCredentials();
         }
-
-        if (user.getConfirmationCode() == null || !user.getConfirmationCode().equals(request.getCod())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Неверный код подтверждения");
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_BLOCKED", "Учётная запись заблокирована");
         }
+        return new AuthResponse(jwtTokenService.issue(user), UserResponse.from(user));
+    }
 
-        if (user.getConfirmationCodeExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Код подтверждения истёк");
+    @Transactional(readOnly = true)
+    public UserResponse currentUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Пользователь не найден"));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_BLOCKED", "Учётная запись заблокирована");
         }
+        return UserResponse.from(user);
+    }
 
-        user.setStatus(UserStatus.ACTIVE);
-        user.setConfirmationCode(null);
-        user.setConfirmationCodeExpiresAt(null);
-        userRepository.save(user);
+    private ApiException badCredentials() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Неверный email или пароль");
+    }
+
+    private static String canonicalEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }
