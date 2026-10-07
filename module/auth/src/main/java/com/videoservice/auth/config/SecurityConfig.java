@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,6 +24,8 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
@@ -53,14 +56,42 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper) throws Exception {
+    @Order(1)
+    SecurityFilterChain workerSecurityFilterChain(HttpSecurity http, ObjectMapper mapper,
+                                                  @Qualifier("workerJwtDecoder") JwtDecoder workerDecoder) throws Exception {
+        http.securityMatcher("/api/v1/internal/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(workerDecoder))
+                        .authenticationEntryPoint((request, response, exception) ->
+                                writeError(mapper, request, response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Требуется worker token")));
+        return http.build();
+    }
+
+    @Bean("workerJwtDecoder")
+    JwtDecoder workerJwtDecoder(@Value("${video.auth.worker-jwt-secret}") String secret) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(new SecretKeySpec(signingKey(secret), "HmacSHA256")).build();
+        OAuth2TokenValidator<Jwt> audience = jwt -> jwt.getAudience().contains("video-worker")
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Wrong worker audience", null));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer("video-service-worker"), audience));
+        return decoder;
+    }
+
+    @Bean
+    @Order(2)
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper,
+                                            @Qualifier("jwtDecoder") JwtDecoder userDecoder) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/v1/health", "/v1/health/ready").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/videos", "/api/v1/videos/*").permitAll()
                         .requestMatchers("/api/v1/internal/**").denyAll()
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {})
+                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(userDecoder))
                         .authenticationEntryPoint((request, response, exception) ->
                                 writeError(mapper, request, response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Требуется действительный access token")))
                 .exceptionHandling(errors -> errors.accessDeniedHandler((request, response, exception) ->

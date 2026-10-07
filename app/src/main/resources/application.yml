@@ -12,11 +12,26 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
-    locations: classpath:db/identity
+    locations: classpath:db/identity,classpath:db/video
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
 
 video:
   auth:
     jwt-secret: ${JWT_SECRET}
+    worker-jwt-secret: ${WORKER_JWT_SECRET}
+  storage:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:9000}
+    region: ${S3_REGION:us-east-1}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    bucket: ${S3_BUCKET:video-media}

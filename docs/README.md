@@ -1,6 +1,6 @@
 # Документация Video Service
 
-Все решения имеют статус **предложено**. Это согласованный проект MVP, а не отчёт о готовой системе.
+Документация описывает **целевой MVP**. Часть контрактов уже реализована (регистрация/авторизация и загрузка исходного видео), но документ не означает готовность всей системы. [Состояние реализации и запуск](implementation-status.md).
 
 ## Порядок чтения
 
@@ -10,7 +10,7 @@
 4. [ERD](domain/erd.md) — таблицы, связи, транзакции и индексы.
 5. [Загрузка](scenarios/upload.md), [обработка](scenarios/processing.md), [просмотр](scenarios/playback.md), [удаление](scenarios/deletion.md).
 6. [HTTP-контракт](api/http.md), [OpenAPI](api/openapi.yaml), [события](api/events.md), [AsyncAPI](api/asyncapi.yaml).
-7. [ADR](decisions/0001-processing-and-playback.md) и [проверки](review-checklist.md).
+7. [ADR](decisions/0001-processing-and-playback.md), [состояние реализации](implementation-status.md) и [проверки](review-checklist.md).
 
 ## Как переносить в существующий репозиторий
 
