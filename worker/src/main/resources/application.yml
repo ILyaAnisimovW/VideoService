@@ -1,0 +1,15 @@
+spring:
+  main:
+    web-application-type: none
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+
+worker:
+  id: ${WORKER_ID:worker-1}
+  api-base-url: ${API_BASE_URL:http://localhost:8080}
+  jwt-secret: ${WORKER_JWT_SECRET}
