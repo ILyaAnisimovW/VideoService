@@ -2,7 +2,7 @@
 
 PostgreSQL хранит метаданные; бинарные видео и сегменты находятся в объектном хранилище. Ниже две проекции одной схемы.
 
-Реализованная часть схемы загрузки находится в миграции [`V2__upload_pipeline.sql`](../../app/src/main/resources/db/video/V2__upload_pipeline.sql). Диаграммы ниже показывают целевую схему всего MVP: таблицы воспроизведения и обработки результатов worker пока не реализованы. В миграции дополнительно есть технические поля `create_key`, `create_hash`, `completion_key` и `completion_hash` для безопасного восстановления запросов через внешнее S3-хранилище.
+Схема backend MVP находится в миграциях [`V2__upload_pipeline.sql`](../../app/src/main/resources/db/video/V2__upload_pipeline.sql) и [`V3__complete_mvp.sql`](../../app/src/main/resources/db/video/V3__complete_mvp.sql). Диаграммы ниже показывают логическую модель. В миграциях дополнительно есть технические поля `create_key`, `create_hash`, `completion_key` и `completion_hash` для безопасного восстановления запросов через внешнее S3-хранилище.
 
 ## Пользователи и видео
 
@@ -159,7 +159,7 @@ Disposition DUPLICATE — иной eventId для уже завершённог�
 | processed_events | Composite PK; `(processed_at)` для retention |
 | idempotency_records | Composite PK; `(expires_at)` для retention |
 
-Точные DDL и миграции создаются при реализации. Межтабличные инварианты READY/lease нельзя полностью выразить CHECK: нужны транзакции и прикладные проверки.
+Точный DDL находится в миграциях. Межтабличные инварианты READY/lease нельзя полностью выразить CHECK: их обеспечивают транзакции и прикладные проверки.
 
 ## Транзакции
 

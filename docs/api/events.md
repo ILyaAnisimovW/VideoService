@@ -12,7 +12,7 @@
 
 Durable direct exchange `video.processing`; durable queues `processing.jobs` и `processing.results`; persistent messages; publisher confirms + mandatory routing. Result queue binds succeeded и failed. Prefetch worker=1 на канал; число процессов определяется ресурсами CPU/RAM.
 
-Retry queues и DLQ задаются при реализации: capped exponential backoff, например 5/30/120 секунд. Transport delivery retries не равны actual processing attempts. actual attempts считает SQL claim; maxAttempts=3. Для результатов ограничить transport retries, после лимита DLQ; scheduler восстановит зависший job по lease.
+Для `processing.results` listener выполняет до четырёх transport-попыток с коротким backoff, затем брокер переводит сообщение в `processing.results.dead`; poison job попадает в `processing.jobs.dead`. Transport retries не равны actual processing attempts: actual attempts считает SQL claim, maxAttempts=3. Recovery scheduler восстанавливает зависший job по lease и повторно отправляет давно не взятый QUEUED job через outbox. DLQ требует операционного наблюдения и ручного разбора причин.
 
 ## Envelope
 

@@ -35,3 +35,5 @@ video:
     access-key: ${S3_ACCESS_KEY}
     secret-key: ${S3_SECRET_KEY}
     bucket: ${S3_BUCKET:video-media}
+  playback:
+    public-base-url: ${VIDEO_PLAYBACK_PUBLIC_BASE_URL:http://localhost:8080}

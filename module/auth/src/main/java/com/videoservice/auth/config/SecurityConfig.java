@@ -89,6 +89,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/v1/health", "/v1/health/ready").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/videos", "/api/v1/videos/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/videos/*/playback-sessions").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/playback-sessions/*/manifests/*").permitAll()
                         .requestMatchers("/api/v1/internal/**").denyAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.decoder(userDecoder))
