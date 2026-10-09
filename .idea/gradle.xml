@@ -12,6 +12,7 @@
             <option value="$PROJECT_DIR$/module" />
             <option value="$PROJECT_DIR$/module/auth" />
             <option value="$PROJECT_DIR$/shared" />
+            <option value="$PROJECT_DIR$/worker" />
           </set>
         </option>
       </GradleProjectSettings>
